@@ -1,0 +1,524 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Vibecode Wheel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400..700&display=swap">
+<style>
+  /* Layout: tek sütun, ortada kollu cam çark; altında sonuç ve hazır istek metni. Tek bir koyu görünüm. */
+  :root {
+    color-scheme: dark;
+    --bg: #232221;
+    --bg-glow: #3b3937;
+    --bg-deep: #171615;
+    --fg: #f4f0ea;
+    --muted: #a8a299;
+    --line: rgba(255, 255, 255, 0.6);
+    --red: #ee4637;
+    --red-deep: #9f2118;
+    --red-hi: #ff8c7e;
+    --frame-1: #70504a;
+    --frame-2: #4b3b38;
+    --frame-3: #342b29;
+    --metal-1: #ece9e4;
+    --metal-2: #8d8a85;
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-line: rgba(255, 255, 255, 0.17);
+    --display: 'Newsreader', Georgia, 'Times New Roman', serif;
+    --ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --row: 46px;
+    --win: calc(var(--row) * 5);
+  }
+  html { height: 100%; }
+  body {
+    min-height: 100%;
+    background-color: var(--bg);
+    background-image: radial-gradient(ellipse 80% 60% at 50% 38%, var(--bg-glow) 0%, var(--bg) 55%, var(--bg-deep) 100%);
+    color: var(--fg);
+    font-family: var(--ui);
+    padding-block: 32px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(26px, 7vw, 36px);
+    line-height: 1.15;
+    letter-spacing: 0.005em;
+    text-align: center;
+    text-wrap: balance;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  }
+
+  .machine {
+    width: 100%;
+    max-width: 400px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 56px;
+    align-items: stretch;
+  }
+  .frame {
+    padding: 7px;
+    border-radius: 18px;
+    background: linear-gradient(145deg, var(--frame-1), var(--frame-2) 45%, var(--frame-3));
+    box-shadow: 0 22px 44px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  }
+  .window {
+    position: relative;
+    height: var(--win);
+    overflow: hidden;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.13));
+    box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  .reel {
+    position: absolute;
+    inset: 0;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24%, #000 76%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 24%, #000 76%, transparent 100%);
+  }
+  .item {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: 50%;
+    height: var(--row);
+    margin-top: calc(var(--row) / -2);
+    line-height: var(--row);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--display);
+    font-size: 25px;
+    color: var(--fg);
+    will-change: transform, opacity;
+  }
+  .payline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: var(--row);
+    margin-top: calc(var(--row) / -2);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    pointer-events: none;
+  }
+  .payline.flash { animation: flash 0.9s ease-out; }
+  @keyframes flash {
+    0% { background: rgba(255, 255, 255, 0.22); border-color: #fff; }
+    100% { background: rgba(255, 255, 255, 0); border-color: var(--line); }
+  }
+  .mark {
+    position: absolute;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    margin-top: -3.5px;
+    border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 6px rgba(238, 70, 55, 0.7);
+  }
+  .mark.l { left: 6px; }
+  .mark.r { right: 6px; }
+
+  .lever {
+    position: relative;
+    height: calc(var(--win) + 14px);
+  }
+  .mount {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 28px;
+    height: 36px;
+    margin-top: -18px;
+    border-radius: 0 9px 9px 0;
+    background: linear-gradient(145deg, var(--frame-1), var(--frame-3));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .arm {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 36px;
+    height: 88px;
+    transform-origin: 18px 0;
+    transform: rotate(180deg);
+    cursor: grab;
+    touch-action: none;
+    outline: none;
+  }
+  .arm:active { cursor: grabbing; }
+  .rod {
+    position: absolute;
+    left: 15px;
+    top: 0;
+    width: 6px;
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--metal-2), var(--metal-1) 45%, var(--metal-2));
+  }
+  .ball {
+    position: absolute;
+    left: 5px;
+    top: calc(100% - 13px);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, var(--red-hi), var(--red) 45%, var(--red-deep));
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+  }
+  .arm:focus-visible .ball { outline: 2px solid var(--fg); outline-offset: 3px; }
+  .pivot {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin-top: -10px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    border: 3px solid var(--metal-1);
+    background: var(--bg);
+    pointer-events: none;
+  }
+
+  .spin {
+    font: 500 15px/1 var(--ui);
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--surface-line);
+    border-radius: 999px;
+    padding: 12px 26px;
+    min-width: 132px;
+    cursor: pointer;
+  }
+  .spin:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+  .spin:focus-visible, .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+  .spin:disabled { opacity: 0.55; cursor: default; }
+
+  .result {
+    width: 100%;
+    max-width: 400px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    text-align: center;
+  }
+  .hint { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .picked {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .label {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .app {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 650;
+    font-size: clamp(28px, 8vw, 38px);
+    line-height: 1.1;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+  .prompt {
+    width: 100%;
+    margin-top: 8px;
+    box-sizing: border-box;
+    padding: 14px;
+    border: 1px solid var(--surface-line);
+    border-radius: 12px;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+    text-align: left;
+    min-width: 0;
+  }
+  .prompt p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--fg); overflow-wrap: anywhere; }
+  .copy {
+    align-self: flex-end;
+    font: 500 13px/1 var(--ui);
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--surface-line);
+    border-radius: 999px;
+    padding: 9px 16px;
+    cursor: pointer;
+  }
+  .copy:hover { background: rgba(255, 255, 255, 0.1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .payline.flash { animation: none; }
+  }
+</style>
+
+<h1>Bunu vibecode edebilir miyim?</h1>
+
+<div class="machine">
+  <div class="frame">
+    <div class="window" aria-hidden="true">
+      <div class="reel" id="reel"></div>
+      <div class="payline" id="payline"></div>
+      <i class="mark l"></i><i class="mark r"></i>
+    </div>
+  </div>
+  <div class="lever">
+    <div class="mount"></div>
+    <div class="arm" id="arm" role="button" tabindex="0" aria-label="Kolu çek">
+      <div class="rod"></div>
+      <div class="ball" id="ball"></div>
+    </div>
+    <div class="pivot"></div>
+  </div>
+</div>
+
+<button class="spin" id="spin" type="button">Çevir</button>
+
+<section class="result" id="result" aria-live="polite">
+  <p class="hint" id="hint">Kolu aşağı çek ya da Çevir düğmesine bas.</p>
+  <div class="picked" id="picked" hidden>
+    <p class="label">Çıkan uygulama</p>
+    <p class="app" id="appName"></p>
+    <div class="prompt">
+      <p id="promptText"></p>
+      <button class="copy" id="copy" type="button">Kopyala</button>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  var APPS = [
+    'Amazon', 'WhatsApp', 'Facebook', 'Minecraft', 'YouTube',
+    'Instagram', 'TikTok', 'Spotify', 'Netflix', 'Discord', 'Snapchat',
+    'Uber', 'Trendyol', 'Yemeksepeti', 'Telegram', 'Google Maps',
+    'Duolingo', 'Pinterest', 'Roblox', 'Notion', 'Tinder', 'Shazam',
+    'Getir', 'Twitch', 'Reddit', 'Steam', 'Gmail', 'Zoom', 'Canva',
+    'X (Twitter)', 'Candy Crush', 'Among Us', 'Airbnb', 'LinkedIn',
+    'Fortnite', 'PUBG Mobile', 'Clash of Clans', 'Subway Surfers', 'Flappy Bird',
+    'Wordle', 'Tetris', 'Pokémon GO', 'Brawl Stars', 'Valorant',
+    'Google Drive', 'Google Translate', 'Google Photos', 'Chrome', 'Outlook',
+    'Slack', 'Trello', 'Figma', 'Dropbox', 'Shopify',
+    'eBay', 'AliExpress', 'Temu', 'Hepsiburada', 'Sahibinden',
+    'BiP', 'Papara', 'Binance', 'PayPal', 'Waze',
+    'BiTaksi', 'Bolt', 'Bumble', 'Strava', 'Headspace',
+    'Medium', 'Quora', 'Signal', 'Skype', 'Microsoft Teams',
+    'Apple Music', 'Deezer', 'BeReal', 'Kahoot', 'Quizlet',
+    'Khan Academy', 'Todoist', 'Evernote', 'Google Meet', 'Disney+',
+    'Prime Video', 'BluTV', 'Exxen', 'Threads', 'Bluesky'
+  ];
+  var N = APPS.length;
+  var ROW = 46;
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var reel = document.getElementById('reel');
+  var payline = document.getElementById('payline');
+  var arm = document.getElementById('arm');
+  var ball = document.getElementById('ball');
+  var spinBtn = document.getElementById('spin');
+  var hint = document.getElementById('hint');
+  var picked = document.getElementById('picked');
+  var appName = document.getElementById('appName');
+  var promptText = document.getElementById('promptText');
+  var copyBtn = document.getElementById('copy');
+
+  var rows = [];
+  for (var j = 0; j < 7; j++) {
+    var d = document.createElement('div');
+    d.className = 'item';
+    reel.appendChild(d);
+    rows.push(d);
+  }
+
+  function mod(a, n) { return ((a % n) + n) % n; }
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+  function easeIn(t) { return t * t; }
+
+  var pos = 2; // başlangıçta ortada Facebook
+  var spinning = false;
+  var busy = false;
+  var angle = 0;
+
+  function render(p) {
+    var base = Math.floor(p);
+    var frac = p - base;
+    for (var j = 0; j < 7; j++) {
+      var k = j - 3;
+      var el = rows[j];
+      var idx = mod(base + k, N);
+      if (el._i !== idx) { el._i = idx; el.textContent = APPS[idx]; }
+      var y = (k - frac) * ROW;
+      var dist = Math.abs(k - frac);
+      el.style.transform = 'translateY(' + y.toFixed(2) + 'px) scale(' + clamp(1 - dist * 0.1, 0.7, 1).toFixed(3) + ')';
+      el.style.opacity = clamp(1 - dist * 0.42, 0.1, 1).toFixed(3);
+      el.style.fontWeight = Math.round(400 + 300 * clamp(1 - dist, 0, 1));
+    }
+  }
+
+  function setArm(a) {
+    angle = a;
+    var r = 180 - a;
+    arm.style.transform = 'rotate(' + r + 'deg)';
+    ball.style.transform = 'rotate(' + (-r) + 'deg)';
+  }
+
+  function tween(from, to, ms, ease, cb) {
+    return new Promise(function (resolve) {
+      var t0 = performance.now();
+      function f(now) {
+        var t = clamp((now - t0) / ms, 0, 1);
+        cb(from + (to - from) * ease(t));
+        if (t < 1) requestAnimationFrame(f); else resolve();
+      }
+      requestAnimationFrame(f);
+    });
+  }
+
+  function showResult(app) {
+    appName.textContent = app;
+    promptText.textContent = 'Bana ' + app + ' tarzında basit bir web uygulaması yap. Tek HTML dosyası olsun, telefonda düzgün çalışsın, ana ekran ve en önemli 3 özellik yeterli.';
+    copyBtn.textContent = 'Kopyala';
+    hint.hidden = true;
+    picked.hidden = false;
+  }
+
+  function finish(target) {
+    pos = Math.round(pos);
+    render(pos);
+    reel.style.filter = 'none';
+    spinning = false;
+    spinBtn.disabled = false;
+    spinBtn.textContent = 'Tekrar çevir';
+    payline.classList.remove('flash');
+    void payline.offsetWidth;
+    payline.classList.add('flash');
+    showResult(APPS[target]);
+  }
+
+  function spin() {
+    if (spinning) return;
+    spinning = true;
+    spinBtn.disabled = true;
+    spinBtn.textContent = 'Dönüyor…';
+    picked.hidden = true;
+    hint.hidden = false;
+    hint.textContent = 'Çark dönüyor…';
+
+    var from = Math.round(pos);
+    var cur = mod(from, N);
+    var delta = reduced ? 3 + Math.floor(Math.random() * (N - 3)) : 40 + Math.floor(Math.random() * N);
+    if (mod(delta, N) === 0) delta += 1;
+    var target = mod(cur + delta, N);
+    var dur = reduced ? 450 : 3600 + delta * 14;
+    var t0 = performance.now();
+    var last = from;
+    var lastT = t0;
+
+    function frame(now) {
+      var t = clamp((now - t0) / dur, 0, 1);
+      pos = from + delta * easeOutCubic(t);
+      var dt = Math.max(1, now - lastT);
+      var v = (pos - last) / dt * 1000;
+      last = pos;
+      lastT = now;
+      var b = reduced ? 0 : Math.min(2, v / 18);
+      reel.style.filter = b > 0.35 ? 'blur(' + b.toFixed(2) + 'px)' : 'none';
+      render(pos);
+      if (t < 1) requestAnimationFrame(frame); else finish(target);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function pull(fromAngle) {
+    if (busy || spinning) return Promise.resolve();
+    busy = true;
+    var down = reduced ? 1 : 120 + 160 * (1 - fromAngle / 180);
+    return tween(fromAngle, 180, down, easeIn, setArm)
+      .then(function () {
+        spin();
+        return tween(180, 0, reduced ? 1 : 650, easeOutCubic, setArm);
+      })
+      .then(function () { busy = false; });
+  }
+
+  function release() {
+    busy = true;
+    return tween(angle, 0, 300, easeOutCubic, setArm).then(function () { busy = false; });
+  }
+
+  var drag = null;
+  arm.addEventListener('pointerdown', function (e) {
+    if (busy || spinning) return;
+    drag = { y: e.clientY, moved: 0 };
+    try { arm.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+  arm.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dy = e.clientY - drag.y;
+    drag.moved = Math.max(drag.moved, Math.abs(dy));
+    setArm(clamp(dy / 170 * 180, 0, 180));
+  });
+  arm.addEventListener('pointerup', function () {
+    if (!drag) return;
+    var dg = drag;
+    drag = null;
+    if (dg.moved < 6) { setArm(0); pull(0); }
+    else if (angle > 100) pull(angle);
+    else release();
+  });
+  arm.addEventListener('pointercancel', function () {
+    if (!drag) return;
+    drag = null;
+    release();
+  });
+  arm.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pull(0); }
+  });
+  spinBtn.addEventListener('click', function () { pull(0); });
+
+  copyBtn.addEventListener('click', function () {
+    var text = promptText.textContent;
+    var p;
+    try { p = navigator.clipboard.writeText(text); } catch (_) { p = Promise.reject(); }
+    p.then(function () {
+      copyBtn.textContent = 'Kopyalandı';
+    }, function () {
+      var r = document.createRange();
+      r.selectNodeContents(promptText);
+      var s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(r);
+      copyBtn.textContent = 'Metin seçildi';
+    });
+    setTimeout(function () { copyBtn.textContent = 'Kopyala'; }, 1800);
+  });
+
+  setArm(0);
+  render(pos);
+})();
+</script>
+
+</body></html>
